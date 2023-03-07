@@ -13108,3 +13108,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     err = self.run_process([EMCC, 'main.c'], stderr=PIPE).stderr
     expected = "warning: macro 'emscripten_main_browser_thread_id' has been marked as deprecated: use emscripten_main_runtime_thread_id instead [-Wdeprecated-pragma]"
     self.assertContained(expected, err)
+
+  def test_cpp_module(self):
+    self.run_process([EMXX, '-std=c++20', test_file('other/hello_world.cppm'), '--precompile', '-o', 'hello_world.pcm'])
+    self.do_other_test('test_cpp_module.cpp', emcc_args=['-std=c++20', '-fprebuilt-module-path=.', 'hello_world.pcm'])
