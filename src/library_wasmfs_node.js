@@ -120,9 +120,12 @@ mergeInto(LibraryManager.library, {
 
   _wasmfs_node_insert_file__deps: ['$wasmfsNodeConvertNodeCode'],
   _wasmfs_node_insert_file: function(path_p, mode) {
+    console.log("back to js: ", __dirname);
+    console.log("path: ", nodePath.join(__dirname, UTF8ToString(path_p)));
     try {
-      fs.closeSync(fs.openSync(UTF8ToString(path_p), 'ax', mode));
+      fs.closeSync(fs.openSync(nodePath.join(__dirname, UTF8ToString(path_p)), 'ax', mode));
     } catch (e) {
+      console.log("err: ", e);
       if (!e.code) throw e;
       return wasmfsNodeConvertNodeCode(e);
     }

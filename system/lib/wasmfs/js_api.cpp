@@ -23,6 +23,9 @@ using namespace wasmfs;
 extern "C" {
 
 __wasi_fd_t wasmfs_create_file(char* pathname, mode_t mode, backend_t backend);
+int wasmfs_create_directory(char* path, int mode, backend_t backend);
+backend_t wasmfs_create_node_backend(const char* root __attribute__((nonnull)));
+backend_t wasmfs_create_memory_backend(void);
 
 // Copy the file specified by the pathname into JS.
 // Return a pointer to the JS buffer in HEAPU8.
@@ -126,7 +129,10 @@ int _wasmfs_mkdir(char* path, int mode) {
 int _wasmfs_rmdir(char* path){ return __syscall_unlinkat(AT_FDCWD, (intptr_t)path, AT_REMOVEDIR); }
 
 int _wasmfs_open(char* path, int flags, mode_t mode) {
-  return __syscall_openat(AT_FDCWD, (intptr_t)path, flags, mode);
+  printf("Made it to wasmfs_open: %d\n", flags);
+  int err = __syscall_openat(AT_FDCWD, (intptr_t)path, flags, mode);
+  printf("Open Cpp Err: %d\n", err);
+  return err;
 }
 
 int _wasmfs_allocate(int fd, off_t offset, off_t len) {
@@ -262,6 +268,26 @@ int _wasmfs_stat(char* path, struct stat* statBuf) {
 
 int _wasmfs_lstat(char* path, struct stat* statBuf) {
   return __syscall_lstat64((intptr_t)path, (intptr_t)statBuf);
+}
+
+int _wasmfs_mount(char* path, int backend_type) {
+  backend_t created_backend;
+  switch(backend_type) {
+    case 0:
+      created_backend = wasmfs_create_memory_backend();
+      break;
+    case 1:
+      printf("Making node backend\n");
+      created_backend = wasmfs_create_node_backend(path);
+      break;
+    default:
+      return -EINVAL;
+  }
+  printf("Addr: %p\n", &created_backend);
+  int err = wasmfs_create_directory(path, 0777, created_backend);
+  printf("Err: %d\n", err);
+
+  return err;
 }
 
 // Helper method that identifies what a path is:

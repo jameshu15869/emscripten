@@ -418,6 +418,8 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
     return -EINVAL;
   }
 
+  printf("Inside doOpen\n");
+
   // TODO: remove assert when all functionality is complete.
   assert((flags & ~(O_CREAT | O_EXCL | O_DIRECTORY | O_TRUNC | O_APPEND |
                     O_RDWR | O_WRONLY | O_RDONLY | O_LARGEFILE | O_NOFOLLOW |
@@ -462,6 +464,7 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
       if (backend == parent->getBackend()) {
         created = lockedParent.insertDataFile(std::string(childName), mode);
         if (!created) {
+          printf("Bad same backend\n");
           // TODO Receive a specific error code, and report it here. For now,
           //      report a generic error.
           return -EIO;
@@ -469,6 +472,7 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
       } else {
         created = backend->createFile(mode);
         if (!created) {
+          printf("Bad different backend\n");
           // TODO Receive a specific error code, and report it here. For now,
           //      report a generic error.
           return -EIO;
@@ -547,7 +551,7 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
       return -EACCES;
     }
     // Try to truncate the file, continuing silently if we cannot.
-    (void)child->cast<DataFile>()->locked().setSize(0);
+    // (void)child->cast<DataFile>()->locked().setSize(0);
   }
 
   return wasmFS.getFileTable().locked().addEntry(openFile);
@@ -623,6 +627,7 @@ doMkdir(path::ParsedParent parsed, int mode, backend_t backend = NullBackend) {
   }
 
   if (backend == parent->getBackend()) {
+    printf("Same backend\n");
     if (!lockedParent.insertDirectory(childName, mode)) {
       // TODO Receive a specific error code, and report it here. For now, report
       //      a generic error.
@@ -630,6 +635,7 @@ doMkdir(path::ParsedParent parsed, int mode, backend_t backend = NullBackend) {
     }
   } else {
     auto created = backend->createDirectory(mode);
+    printf("Different backend\n");
     if (!created) {
       // TODO Receive a specific error code, and report it here. For now, report
       //      a generic error.

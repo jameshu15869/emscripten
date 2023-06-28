@@ -5,6 +5,8 @@
  */
 
 mergeInto(LibraryManager.library, {
+  $MEMFS: 0,
+  $NODEFS: 1,
   $wasmFSPreloadedFiles: [],
   $wasmFSPreloadedDirs: [],
   // We must note when preloading has been "flushed", that is, the time at which
@@ -18,6 +20,8 @@ FS.init();
 FS.createPreloadedFile = FS_createPreloadedFile;
 `,
   $FS__deps: [
+    '$MEMFS',
+    '$NODEFS',
     '$wasmFSPreloadedFiles',
     '$wasmFSPreloadedDirs',
     '$wasmFSPreloadingFlushed',
@@ -350,6 +354,13 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       return entries;
     }),
     // TODO: mount
+    mount: (type, opts, mountpoint) => {
+      console.log("Type: ", type);
+      console.log("Opts: ", opts.root);
+      var err = withStackSave(() => __wasmfs_mount(stringToUTF8OnStack(mountpoint), type));
+      console.log("JS ERR: ", err);
+      return err;
+    },
     // TODO: unmount
     // TODO: lookup
     mknod: (path, mode, dev) => {

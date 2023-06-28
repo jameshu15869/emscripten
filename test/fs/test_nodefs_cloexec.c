@@ -21,8 +21,10 @@ int main(void)
 {
     EM_ASM(
 #ifdef NODERAWFS
+        console.log("##### RAWFS");
         FS.close(FS.open('test.txt', 'w'));
 #else
+        console.log("##### Normal NODEFS");
         FS.mkdir('/working');
         FS.mount(NODEFS, {root: '.'}, '/working');
         FS.close(FS.open('/working/test.txt', 'w'));

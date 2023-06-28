@@ -2329,6 +2329,8 @@ def phase_linker_setup(options, state, newargs):
       # included, as the entire JS library can refer to things that require
       # these exports.)
       settings.REQUIRED_EXPORTS += [
+        'wasmfs_create_node_backend',
+        '_wasmfs_mount',
         '_wasmfs_read_file',
         '_wasmfs_write_file',
         '_wasmfs_open',

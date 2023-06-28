@@ -14,7 +14,7 @@
 int main(void)
 {
     EM_ASM(
-        FS.mkdir('/working');
+        // FS.mkdir('/working');
         FS.mount(NODEFS, {root: '.'}, '/working');
         FS.close(FS.open('/working/test.txt', 'w'));
     );
