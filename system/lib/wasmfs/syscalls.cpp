@@ -803,6 +803,7 @@ __wasi_errno_t __wasi_fd_fdstat_get(__wasi_fd_t fd, __wasi_fdstat_t* stat) {
 
 // TODO: Test this with non-AT_FDCWD values.
 int __syscall_unlinkat(int dirfd, intptr_t path, int flags) {
+  printf("Made it to rmdir\n");
   if (flags & ~AT_REMOVEDIR) {
     // TODO: Test this case.
     return -EINVAL;
@@ -836,6 +837,8 @@ int __syscall_unlinkat(int dirfd, intptr_t path, int flags) {
     return -EBUSY;
   }
 
+  printf("Before checks\n");
+
   auto lockedFile = file->locked();
   if (auto dir = file->dynCast<Directory>()) {
     if (flags != AT_REMOVEDIR) {
@@ -843,6 +846,7 @@ int __syscall_unlinkat(int dirfd, intptr_t path, int flags) {
     }
     // A directory can only be removed if it has no entries.
     if (dir->locked().getNumEntries() > 0) {
+      printf("Not empty\n");
       return -ENOTEMPTY;
     }
   } else {
@@ -863,6 +867,87 @@ int __syscall_unlinkat(int dirfd, intptr_t path, int flags) {
 
 int __syscall_rmdir(intptr_t path) {
   return __syscall_unlinkat(AT_FDCWD, path, AT_REMOVEDIR);
+}
+
+// Assumes AT_REMOVEDIR is true
+int wasmfs_unmount(int dirfd, intptr_t path) {
+  printf("Made it to wasmfs_unmount\n");
+  // if (flags & ~AT_REMOVEDIR) {
+  //   // TODO: Test this case.
+  //   return -EINVAL;
+  // }
+  // It is invalid for rmdir paths to end in ".", but we need to distinguish
+  // this case from the case of `parseParent` returning (root, '.') when parsing
+  // "/", so we need to find the invalid "/." manually.
+  // if (flags == AT_REMOVEDIR) {
+  //   std::string_view p((char*)path);
+  //   // Ignore trailing '/'.
+  //   while (!p.empty() && p.back() == '/') {
+  //     p.remove_suffix(1);
+  //   }
+  //   if (p.size() >= 2 && p.substr(p.size() - 2) == std::string_view("/.")) {
+  //     return -EINVAL;
+  //   }
+  // }
+  std::string_view p((char*)path);
+  // Ignore trailing '/'.
+  while (!p.empty() && p.back() == '/') {
+    p.remove_suffix(1);
+  }
+  if (p.size() >= 2 && p.substr(p.size() - 2) == std::string_view("/.")) {
+    return -EINVAL;
+  }
+
+  auto parsed = path::parseParent((char*)path, dirfd);
+  if (auto err = parsed.getError()) {
+    printf("Parse error\n");
+    return err;
+  }
+  printf("Parsed parent\n");
+  auto& [parent, childNameView] = parsed.getParentChild();
+  std::string childName(childNameView);
+  auto lockedParent = parent->locked();
+  auto file = lockedParent.getChild(childName);
+  printf("Parsed child\n");
+  if (!file) {
+    return -ENOENT;
+  }
+  // Disallow removing the root directory, even if it is empty.
+  if (file == wasmFS.getRootDirectory()) {
+    return -EBUSY;
+  }
+
+  printf("Before checks\n");
+
+  auto lockedFile = file->locked();
+  if (auto dir = file->dynCast<Directory>()) {
+    // if (flags != AT_REMOVEDIR) {
+    //   return -EISDIR;
+    // }
+    // A directory can only be removed if it has no entries.
+    // if (dir->locked().getNumEntries() > 0) {
+    //   printf("Not empty\n");
+    //   return -ENOTEMPTY;
+    // }
+    if (parent->getBackend() == dir->getBackend()) {
+      // The child is not a valid mountpoint.
+      return -EINVAL;
+    }
+  } else {
+    // A normal file or symlink.
+    // if (flags == AT_REMOVEDIR) {
+    //   return -ENOTDIR;
+    // }
+    return -ENOTDIR;
+  }
+
+  // Cannot unlink/rmdir if the parent dir doesn't have write permissions.
+  if (!(lockedParent.getMode() & WASMFS_PERM_WRITE)) {
+    return -EACCES;
+  }
+
+  // Input is valid, perform the unlink.
+  return lockedParent.removeChild(childName);
 }
 
 int __syscall_getdents64(int fd, intptr_t dirp, size_t count) {

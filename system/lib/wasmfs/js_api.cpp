@@ -26,6 +26,8 @@ __wasi_fd_t wasmfs_create_file(char* pathname, mode_t mode, backend_t backend);
 int wasmfs_create_directory(char* path, int mode, backend_t backend);
 backend_t wasmfs_create_node_backend(const char* root __attribute__((nonnull)));
 backend_t wasmfs_create_memory_backend(void);
+int wasmfs_mount_backend(char* path, int mode, backend_t backend);
+int wasmfs_unmount(int dirfd, intptr_t path);
 
 // Copy the file specified by the pathname into JS.
 // Return a pointer to the JS buffer in HEAPU8.
@@ -37,7 +39,7 @@ void* _wasmfs_read_file(char* path) {
   int err = 0;
   err = stat(path, &file);
   if (err < 0) {
-    emscripten_console_error("Fatal error in FS.readFile");
+    emscripten_console_error("Fatal error in FS.readFile stat");
     abort();
   }
 
@@ -54,7 +56,7 @@ void* _wasmfs_read_file(char* path) {
 
   int fd = open(path, O_RDONLY);
   if (fd < 0) {
-    emscripten_console_error("Fatal error in FS.readFile");
+    emscripten_console_error("Fatal error in FS.readFile open");
     abort();
   }
   [[maybe_unused]] int numRead = pread(fd, result + sizeof(size), size, 0);
@@ -63,7 +65,7 @@ void* _wasmfs_read_file(char* path) {
   assert(numRead == size);
   err = close(fd);
   if (err < 0) {
-    emscripten_console_error("Fatal error in FS.readFile");
+    emscripten_console_error("Fatal error in FS.readFile close");
     abort();
   }
 
@@ -270,24 +272,97 @@ int _wasmfs_lstat(char* path, struct stat* statBuf) {
   return __syscall_lstat64((intptr_t)path, (intptr_t)statBuf);
 }
 
-int _wasmfs_mount(char* path, int backend_type) {
+static int
+doMount(path::ParsedParent parsed, int mode, backend_t backend = NullBackend) {
+  if (auto err = parsed.getError()) {
+    return err;
+  }
+  auto& [parent, childNameView] = parsed.getParentChild();
+  std::string childName(childNameView);
+  auto lockedParent = parent->locked();
+
+  // if (childName.size() > WASMFS_NAME_MAX) {
+  //   return -ENAMETOOLONG;
+  // }
+  printf("Do mount: %s\n", childName.c_str());
+  auto child = lockedParent.getChild(childName);
+  if (child) {
+    if (parent->getBackend() != child->getBackend()) {
+      printf("There already is a backend mounted here\n");
+      return -EBUSY;
+    }
+
+    if(child->dynCast<Directory>()->locked().getNumEntries() > 0) {
+      // The child directory is not empty.
+      return -EIO;
+    }
+    // Remove the requested directory if it already exists for compatability with the legacy FS JS API.
+    int err = lockedParent.removeChild(childName);
+    printf("child is safe to remove childName: %s err: %d\n", childName.c_str(), err);
+  }
+
+  // Mask rwx permissions for user, group and others, and the sticky bit.
+  // This prevents users from entering S_IFREG for example.
+  // https://www.gnu.org/software/libc/manual/html_node/Permission-Bits.html
+  mode &= S_IRWXUGO | S_ISVTX;
+
+  // if (!(lockedParent.getMode() & WASMFS_PERM_WRITE)) {
+  //   return -EACCES;
+  // }
+
+  // By default, the backend that the directory is created in is the same as
+  // the parent directory. However, if a backend is passed as a parameter,
+  // then that backend is used.
+  if (!backend) {
+    backend = parent->getBackend();
+  }
+
+  if (backend == parent->getBackend()) {
+    printf("Same backend\n");
+    if (!lockedParent.insertDirectory(childName, mode)) {
+      // TODO Receive a specific error code, and report it here. For now, report
+      //      a generic error.
+      return -EIO;
+    }
+  } else {
+    auto created = backend->createDirectory(mode);
+    printf("Different backend\n");
+    if (!created) {
+      // TODO Receive a specific error code, and report it here. For now, report
+      //      a generic error.
+      return -EIO;
+    }
+    [[maybe_unused]] bool mounted = lockedParent.mountChild(childName, created);
+    assert(mounted);
+  }
+
+  // TODO: Check that the insertion is successful.
+
+  return 0;
+}
+
+int _wasmfs_mount(char* path, char* root, int backend_type) {
   backend_t created_backend;
-  switch(backend_type) {
+  switch (backend_type) {
     case 0:
       created_backend = wasmfs_create_memory_backend();
       break;
     case 1:
-      printf("Making node backend\n");
-      created_backend = wasmfs_create_node_backend(path);
+      printf("Making node backend %s\n", root);
+      created_backend = wasmfs_create_node_backend(root);
       break;
     default:
       return -EINVAL;
   }
   printf("Addr: %p\n", &created_backend);
-  int err = wasmfs_create_directory(path, 0777, created_backend);
+  int err = doMount(path::parseParent(path), 0777, created_backend);
   printf("Err: %d\n", err);
 
   return err;
+}
+
+int _wasmfs_unmount(char* path) {
+  return wasmfs_unmount(AT_FDCWD, (intptr_t)path);
 }
 
 // Helper method that identifies what a path is:

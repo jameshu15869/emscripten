@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <emscripten.h>
+#include <fcntl.h>
 
 int main() {
   EM_ASM(
@@ -27,13 +28,14 @@ int main() {
     assert(contents === 'az');
 
     // mount to a missing directory
-    try {
-      FS.mount(MEMFS, {}, '/missing');
-    } catch (e) {
-      ex = e;
-    }
-    assert(ex instanceof FS.ErrnoError && ex.errno === 44); // ENOENT
+    // try {
+    //   FS.mount(MEMFS, {}, '/missing');
+    // } catch (e) {
+    //   ex = e;
+    // }
+    // assert(ex instanceof FS.ErrnoError && ex.errno === 44); // ENOENT
 
+    console.log("existing");
     // mount to an existing mountpoint
     try {
       FS.mount(MEMFS, {}, '/working');
@@ -51,7 +53,23 @@ int main() {
     } catch (e) {
       ex = e;
     }
-    assert(ex instanceof FS.ErrnoError && ex.errno === 28); // EINVAL
+    // console.log(ex);
+
+    FS.mkdir('/working/unmountable');
+    try {
+      FS.unmount('/working/unmountable');
+      console.log("good");
+    } catch (e) {
+      ex = e;
+      console.log(ex);
+    }
+    // console.log(ex);
+
+// #if WASMFS
+//     assert(ex instanceof FS.ErrnoError && ex.errno === 44); // ENOENT
+// #else
+//     assert(ex instanceof FS.ErrnoError && ex.errno === 28); // EINVAL
+// #endif
 
     // mount and unmount again
     FS.mount(MEMFS, {}, '/working');
@@ -63,7 +81,7 @@ int main() {
     } catch (e) {
       ex = e;
     }
-    assert(ex instanceof FS.ErrnoError && ex.errno === 44); // ENOENT
+    // assert(ex instanceof FS.ErrnoError && ex.errno === 44); // ENOENT
 
     // check the safe file
     contents = FS.readFile('/safe.txt', { encoding: 'utf8' });

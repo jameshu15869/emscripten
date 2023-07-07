@@ -356,12 +356,17 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     // TODO: mount
     mount: (type, opts, mountpoint) => {
       console.log("Type: ", type);
-      console.log("Opts: ", opts.root);
-      var err = withStackSave(() => __wasmfs_mount(stringToUTF8OnStack(mountpoint), type));
+      console.log("Opts: ", opts);
+      var err = withStackSave(() => __wasmfs_mount(stringToUTF8OnStack(mountpoint), opts.root ? stringToUTF8OnStack(opts.root) : stringToUTF8OnStack("."), type));
       console.log("JS ERR: ", err);
-      return err;
+      return FS.handleError(err);
     },
     // TODO: unmount
+    unmount: (mountpoint) => {
+      var err = withStackSave(() => __wasmfs_unmount(stringToUTF8OnStack(mountpoint)));
+      console.log("Unmount err: ", err);
+      return FS.handleError(err);
+    },
     // TODO: lookup
     mknod: (path, mode, dev) => {
       return FS.handleError(withStackSave(() => {

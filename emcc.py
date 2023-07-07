@@ -2331,6 +2331,7 @@ def phase_linker_setup(options, state, newargs):
       settings.REQUIRED_EXPORTS += [
         'wasmfs_create_node_backend',
         '_wasmfs_mount',
+        '_wasmfs_unmount',
         '_wasmfs_read_file',
         '_wasmfs_write_file',
         '_wasmfs_open',

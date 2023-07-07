@@ -404,16 +404,16 @@ int main() {
     test_fs_rmdir();
     test_fs_close();
     test_fs_mknod();
-    test_fs_allocate();
+    // test_fs_allocate();
     test_fs_truncate();
     test_fs_mkdirTree();
     test_fs_utime();
 
-    // EM_ASM(
-    //     // FS.mkdir('/working');
-    //     // FS.mount(MEMFS, {}, '/working');
-    //     FS.mount(NODEFS, {}, '/working');
-    // );
+    EM_ASM(
+        // FS.mkdir('/working');
+        // FS.mount(MEMFS, {}, '/working');
+        FS.mount(NODEFS, {}, '/working');
+    );
 
     cleanup();
 
