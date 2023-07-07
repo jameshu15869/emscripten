@@ -6,7 +6,16 @@
 
 mergeInto(LibraryManager.library, {
 #if WASMFS
-  $NODEFS: 1
+  $NODEFS__deps: ['$stringToUTF8OnStack'],
+  $NODEFS: {
+    mount: (path, opts) => {
+      console.log("NODEFS mount");
+      var createdBackendPointer = _wasmfs_create_node_backend(stringToUTF8OnStack(opts.root));
+      console.log("JS pointer: ", createdBackendPointer);
+      var err = __wasmfs_mount(stringToUTF8OnStack(path), createdBackendPointer);
+      return err;
+    }
+  }
 #else
   $NODEFS__deps: ['$FS', '$PATH', '$ERRNO_CODES', '$mmapAlloc'],
   $NODEFS__postset: 'if (ENVIRONMENT_IS_NODE) { NODEFS.staticInit(); }',

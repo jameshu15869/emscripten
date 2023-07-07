@@ -97,6 +97,10 @@ int main() {
     // check the safe file
     contents = FS.readFile('/safe.txt', { encoding: 'utf8' });
     assert(contents === 'abc');
+
+#if WASMFS
+    FS.mount(OPFS, {}, "/opfs");
+#endif
   );
 
   puts("success");

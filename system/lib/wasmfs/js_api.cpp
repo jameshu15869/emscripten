@@ -342,21 +342,57 @@ int _wasmfs_lstat(char* path, struct stat* statBuf) {
 //   return 0;
 // }
 
-int _wasmfs_mount(char* path, char* root, int backend_type) {
-  backend_t created_backend;
-  switch (backend_type) {
-    case 0:
-      created_backend = wasmfs_create_memory_backend();
-      break;
-    case 1:
-      printf("Making node backend %s\n", root);
-      created_backend = wasmfs_create_node_backend(root);
-      break;
-    default:
-      return -EINVAL;
-  }
+// int _wasmfs_mount(char* path, char* root, int backend_type) {
+//   backend_t created_backend;
+//   switch (backend_type) {
+//     case 0:
+//       created_backend = wasmfs_create_memory_backend();
+//       break;
+//     case 1:
+//       printf("Making node backend %s\n", root);
+//       created_backend = wasmfs_create_node_backend(root);
+//       break;
+//     default:
+//       return -EINVAL;
+//   }
 
-  printf("Addr: %p\n", &created_backend);
+//   printf("Addr: %p\n", &created_backend);
+//   // int err = doMount(path::parseParent(path), 0777, created_backend);
+//   int err = __syscall_rmdir((intptr_t)path);
+//   printf("Rmdir err: %d\n", err);
+
+//   if (err == -ENOTEMPTY) {
+//     // Check for an attempt to mount to an existing mountpoint.
+//     auto parsedParent = path::parseParent(path);
+//     if (auto err = parsedParent.getError()) {
+//       return err;
+//     }
+//     auto& [parent, childNameView] = parsedParent.getParentChild();
+//     std::string childName(childNameView);
+//     auto lockedParent = parent->locked();
+//     auto child = lockedParent.getChild(childName);
+//     if (parent->getBackend() != child->getBackend()) {
+//       return -EBUSY;
+//     }
+
+//     return -ENOTEMPTY;
+//   }
+
+//   // The legacy JS API mount requires the directory to already exist.
+//   if (err && err != -ENOENT) {
+//     return err;
+//   }
+
+//   err = wasmfs_create_directory(path, 0777, created_backend);
+
+//   printf("Create Dir Err: %d\n", err);
+
+//   return err;
+// }
+
+int _wasmfs_mount(char* path, backend_t created_backend) {
+
+  printf("Addr: %p\n", created_backend);
   // int err = doMount(path::parseParent(path), 0777, created_backend);
   int err = __syscall_rmdir((intptr_t)path);
   printf("Rmdir err: %d\n", err);

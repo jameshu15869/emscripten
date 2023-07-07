@@ -5,7 +5,15 @@
  */
 
 mergeInto(LibraryManager.library, {
-  $MEMFS: 0,
+  $MEMFS__deps : [
+    '$stringToUTF8OnStack'
+  ],
+  $MEMFS: {
+    mount: (path, opts) => {
+      var createdBackendPointer = _wasmfs_create_memory_backend(stringToUTF8OnStack(path));
+      return __wasmfs_mount(stringToUTF8OnStack(path), createdBackendPointer);
+    }
+  },
   $wasmFSPreloadedFiles: [],
   $wasmFSPreloadedDirs: [],
   // We must note when preloading has been "flushed", that is, the time at which
@@ -23,6 +31,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 #if LibraryManager.has('library_nodefs.js')
     '$NODEFS',
 #endif
+    '$OPFS',
     '$wasmFSPreloadedFiles',
     '$wasmFSPreloadedDirs',
     '$wasmFSPreloadingFlushed',
@@ -356,9 +365,19 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     }),
     // TODO: mount
     mount: (type, opts, mountpoint) => {
-      console.log("Type: ", type);
-      console.log("Opts: ", opts);
-      var err = withStackSave(() => __wasmfs_mount(stringToUTF8OnStack(mountpoint), opts.root ? stringToUTF8OnStack(opts.root) : stringToUTF8OnStack("."), type));
+      // console.log("Type: ", type);
+      // console.log("Opts: ", opts);
+      // var err = withStackSave(() => __wasmfs_mount(stringToUTF8OnStack(mountpoint), opts.root ? stringToUTF8OnStack(opts.root) : stringToUTF8OnStack("."), type));
+      // console.log("JS ERR: ", err);
+      // return FS.handleError(err);
+      // if (typeof type == 'string') {
+      //   throw type;
+      // }
+      if (type == undefined) {
+        throw new Error("FS is not valid.");
+      }
+
+      var err = type.mount(mountpoint, opts);
       console.log("JS ERR: ", err);
       return FS.handleError(err);
     },
