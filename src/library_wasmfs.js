@@ -6,7 +6,6 @@
 
 mergeInto(LibraryManager.library, {
   $MEMFS: 0,
-  $NODEFS: 1,
   $wasmFSPreloadedFiles: [],
   $wasmFSPreloadedDirs: [],
   // We must note when preloading has been "flushed", that is, the time at which
@@ -21,7 +20,9 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 `,
   $FS__deps: [
     '$MEMFS',
+#if LibraryManager.has('library_nodefs.js')
     '$NODEFS',
+#endif
     '$wasmFSPreloadedFiles',
     '$wasmFSPreloadedDirs',
     '$wasmFSPreloadingFlushed',

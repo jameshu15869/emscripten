@@ -5956,8 +5956,7 @@ Module = {
   @requires_node
   def test_fs_nodefs_home(self):
     self.set_setting('FORCE_FILESYSTEM')
-    if not self.get_setting('WASMFS'):
-      self.emcc_args += ['-lnodefs.js']
+    self.emcc_args += ['-lnodefs.js']
     self.emcc_args += ['--profiling', '--profiling-funcs']
     self.do_runf(test_file('fs/test_nodefs_home.c'), 'success')
 

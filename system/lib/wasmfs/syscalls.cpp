@@ -947,7 +947,13 @@ int wasmfs_unmount(int dirfd, intptr_t path) {
   }
 
   // Input is valid, perform the unlink.
-  return lockedParent.removeChild(childName);
+  if (auto err = lockedParent.removeChild(childName)) {
+    return err;
+  }
+
+  int err = wasmfs_create_directory((char*)path, 0777, parent->getBackend());
+  printf("Unmount create dir err: %d\n", err);
+  return err;
 }
 
 int __syscall_getdents64(int fd, intptr_t dirp, size_t count) {

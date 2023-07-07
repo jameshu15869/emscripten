@@ -39,6 +39,7 @@ void* _wasmfs_read_file(char* path) {
   int err = 0;
   err = stat(path, &file);
   if (err < 0) {
+    printf("Read stat err: %d\n", errno);
     emscripten_console_error("Fatal error in FS.readFile stat");
     abort();
   }
@@ -272,74 +273,74 @@ int _wasmfs_lstat(char* path, struct stat* statBuf) {
   return __syscall_lstat64((intptr_t)path, (intptr_t)statBuf);
 }
 
-static int
-doMount(path::ParsedParent parsed, int mode, backend_t backend = NullBackend) {
-  if (auto err = parsed.getError()) {
-    return err;
-  }
-  auto& [parent, childNameView] = parsed.getParentChild();
-  std::string childName(childNameView);
-  auto lockedParent = parent->locked();
+// static int
+// doMount(path::ParsedParent parsed, int mode, backend_t backend = NullBackend) {
+//   if (auto err = parsed.getError()) {
+//     return err;
+//   }
+//   auto& [parent, childNameView] = parsed.getParentChild();
+//   std::string childName(childNameView);
+//   auto lockedParent = parent->locked();
 
-  // if (childName.size() > WASMFS_NAME_MAX) {
-  //   return -ENAMETOOLONG;
-  // }
-  printf("Do mount: %s\n", childName.c_str());
-  auto child = lockedParent.getChild(childName);
-  if (child) {
-    if (parent->getBackend() != child->getBackend()) {
-      printf("There already is a backend mounted here\n");
-      return -EBUSY;
-    }
+//   // if (childName.size() > WASMFS_NAME_MAX) {
+//   //   return -ENAMETOOLONG;
+//   // }
+//   printf("Do mount: %s\n", childName.c_str());
+//   auto child = lockedParent.getChild(childName);
+//   if (child) {
+//     if (parent->getBackend() != child->getBackend()) {
+//       printf("There already is a backend mounted here\n");
+//       return -EBUSY;
+//     }
 
-    if(child->dynCast<Directory>()->locked().getNumEntries() > 0) {
-      // The child directory is not empty.
-      return -EIO;
-    }
-    // Remove the requested directory if it already exists for compatability with the legacy FS JS API.
-    int err = lockedParent.removeChild(childName);
-    printf("child is safe to remove childName: %s err: %d\n", childName.c_str(), err);
-  }
+//     if(child->dynCast<Directory>()->locked().getNumEntries() > 0) {
+//       // The child directory is not empty.
+//       return -EIO;
+//     }
+//     // Remove the requested directory if it already exists for compatability with the legacy FS JS API.
+//     int err = lockedParent.removeChild(childName);
+//     printf("child is safe to remove childName: %s err: %d\n", childName.c_str(), err);
+//   }
 
-  // Mask rwx permissions for user, group and others, and the sticky bit.
-  // This prevents users from entering S_IFREG for example.
-  // https://www.gnu.org/software/libc/manual/html_node/Permission-Bits.html
-  mode &= S_IRWXUGO | S_ISVTX;
+//   // Mask rwx permissions for user, group and others, and the sticky bit.
+//   // This prevents users from entering S_IFREG for example.
+//   // https://www.gnu.org/software/libc/manual/html_node/Permission-Bits.html
+//   mode &= S_IRWXUGO | S_ISVTX;
 
-  // if (!(lockedParent.getMode() & WASMFS_PERM_WRITE)) {
-  //   return -EACCES;
-  // }
+//   // if (!(lockedParent.getMode() & WASMFS_PERM_WRITE)) {
+//   //   return -EACCES;
+//   // }
 
-  // By default, the backend that the directory is created in is the same as
-  // the parent directory. However, if a backend is passed as a parameter,
-  // then that backend is used.
-  if (!backend) {
-    backend = parent->getBackend();
-  }
+//   // By default, the backend that the directory is created in is the same as
+//   // the parent directory. However, if a backend is passed as a parameter,
+//   // then that backend is used.
+//   if (!backend) {
+//     backend = parent->getBackend();
+//   }
 
-  if (backend == parent->getBackend()) {
-    printf("Same backend\n");
-    if (!lockedParent.insertDirectory(childName, mode)) {
-      // TODO Receive a specific error code, and report it here. For now, report
-      //      a generic error.
-      return -EIO;
-    }
-  } else {
-    auto created = backend->createDirectory(mode);
-    printf("Different backend\n");
-    if (!created) {
-      // TODO Receive a specific error code, and report it here. For now, report
-      //      a generic error.
-      return -EIO;
-    }
-    [[maybe_unused]] bool mounted = lockedParent.mountChild(childName, created);
-    assert(mounted);
-  }
+//   if (backend == parent->getBackend()) {
+//     printf("Same backend\n");
+//     if (!lockedParent.insertDirectory(childName, mode)) {
+//       // TODO Receive a specific error code, and report it here. For now, report
+//       //      a generic error.
+//       return -EIO;
+//     }
+//   } else {
+//     auto created = backend->createDirectory(mode);
+//     printf("Different backend\n");
+//     if (!created) {
+//       // TODO Receive a specific error code, and report it here. For now, report
+//       //      a generic error.
+//       return -EIO;
+//     }
+//     [[maybe_unused]] bool mounted = lockedParent.mountChild(childName, created);
+//     assert(mounted);
+//   }
 
-  // TODO: Check that the insertion is successful.
+//   // TODO: Check that the insertion is successful.
 
-  return 0;
-}
+//   return 0;
+// }
 
 int _wasmfs_mount(char* path, char* root, int backend_type) {
   backend_t created_backend;
@@ -354,9 +355,37 @@ int _wasmfs_mount(char* path, char* root, int backend_type) {
     default:
       return -EINVAL;
   }
+
   printf("Addr: %p\n", &created_backend);
-  int err = doMount(path::parseParent(path), 0777, created_backend);
-  printf("Err: %d\n", err);
+  // int err = doMount(path::parseParent(path), 0777, created_backend);
+  int err = __syscall_rmdir((intptr_t)path);
+  printf("Rmdir err: %d\n", err);
+
+  if (err == -ENOTEMPTY) {
+    // Check for an attempt to mount to an existing mountpoint.
+    auto parsedParent = path::parseParent(path);
+    if (auto err = parsedParent.getError()) {
+      return err;
+    }
+    auto& [parent, childNameView] = parsedParent.getParentChild();
+    std::string childName(childNameView);
+    auto lockedParent = parent->locked();
+    auto child = lockedParent.getChild(childName);
+    if (parent->getBackend() != child->getBackend()) {
+      return -EBUSY;
+    }
+
+    return -ENOTEMPTY;
+  }
+
+  // The legacy JS API mount requires the directory to already exist.
+  if (err && err != -ENOENT) {
+    return err;
+  }
+
+  err = wasmfs_create_directory(path, 0777, created_backend);
+
+  printf("Create Dir Err: %d\n", err);
 
   return err;
 }

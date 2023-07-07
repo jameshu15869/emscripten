@@ -5,6 +5,9 @@
  */
 
 mergeInto(LibraryManager.library, {
+#if WASMFS
+  $NODEFS: 1
+#else
   $NODEFS__deps: ['$FS', '$PATH', '$ERRNO_CODES', '$mmapAlloc'],
   $NODEFS__postset: 'if (ENVIRONMENT_IS_NODE) { NODEFS.staticInit(); }',
   $NODEFS: {
@@ -314,4 +317,6 @@ mergeInto(LibraryManager.library, {
       }
     }
   }
+#endif
+
 });

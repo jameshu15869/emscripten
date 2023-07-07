@@ -27,15 +27,28 @@ int main() {
     contents = FS.readFile('/working/waka.txt', { encoding: 'utf8' });
     assert(contents === 'az');
 
-    // mount to a missing directory
-    // try {
-    //   FS.mount(MEMFS, {}, '/missing');
-    // } catch (e) {
-    //   ex = e;
-    // }
-    // assert(ex instanceof FS.ErrnoError && ex.errno === 44); // ENOENT
+#if !defined(WASMFS)
+    // The legacy API requires a mount directory to exist, while WasmFS will create the directory.
+    try {
+      FS.mount(MEMFS, {}, '/missing');
+    } catch (e) {
+      ex = e;
+    }
+    assert(ex instanceof FS.ErrnoError && ex.errno === 44); // ENOENT
+#endif
 
-    console.log("existing");
+#if WASMFS
+    // WasmFS will throw an error if a directory to mount to is not empty, while the legacy API will not.
+    try {
+      FS.mkdir("/test");
+      FS.writeFile("/test/hi.txt", "abc");
+      FS.mount(MEMFS, {}, '/test');
+    } catch (e) {
+      ex = e;
+    }
+    assert(ex instanceof FS.ErrnoError && ex.errno === 55); // ENOTEMPTY
+#endif
+
     // mount to an existing mountpoint
     try {
       FS.mount(MEMFS, {}, '/working');
@@ -43,6 +56,15 @@ int main() {
       ex = e;
     }
     assert(ex instanceof FS.ErrnoError && ex.errno === 10); // EBUSY
+
+    // attempt to unmount a nonmountopint directory inside a mountpoint
+    FS.mkdir('/working/unmountable');
+    try {
+      FS.unmount('/working/unmountable');
+    } catch (e) {
+      ex = e;
+    }
+    assert(ex instanceof FS.ErrnoError && ex.errno === 28); // EINVAL
 
     // unmount
     FS.unmount('/working');
@@ -53,23 +75,7 @@ int main() {
     } catch (e) {
       ex = e;
     }
-    // console.log(ex);
-
-    FS.mkdir('/working/unmountable');
-    try {
-      FS.unmount('/working/unmountable');
-      console.log("good");
-    } catch (e) {
-      ex = e;
-      console.log(ex);
-    }
-    // console.log(ex);
-
-// #if WASMFS
-//     assert(ex instanceof FS.ErrnoError && ex.errno === 44); // ENOENT
-// #else
-//     assert(ex instanceof FS.ErrnoError && ex.errno === 28); // EINVAL
-// #endif
+    assert(ex instanceof FS.ErrnoError && ex.errno === 28); // EINVAL
 
     // mount and unmount again
     FS.mount(MEMFS, {}, '/working');
@@ -81,7 +87,12 @@ int main() {
     } catch (e) {
       ex = e;
     }
-    // assert(ex instanceof FS.ErrnoError && ex.errno === 44); // ENOENT
+#if !defined(WASMFS)
+      // WasmFS readFile aborts on failure, instead throwing an ErrnoError.
+      assert(ex instanceof FS.ErrnoError && ex.errno === 44); // ENOENT
+#else
+      assert(ex);
+#endif
 
     // check the safe file
     contents = FS.readFile('/safe.txt', { encoding: 'utf8' });
