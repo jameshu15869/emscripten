@@ -418,8 +418,6 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
     return -EINVAL;
   }
 
-  printf("Inside doOpen\n");
-
   // TODO: remove assert when all functionality is complete.
   assert((flags & ~(O_CREAT | O_EXCL | O_DIRECTORY | O_TRUNC | O_APPEND |
                     O_RDWR | O_WRONLY | O_RDONLY | O_LARGEFILE | O_NOFOLLOW |
@@ -551,7 +549,7 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
       return -EACCES;
     }
     // Try to truncate the file, continuing silently if we cannot.
-    // (void)child->cast<DataFile>()->locked().setSize(0);
+    (void)child->cast<DataFile>()->locked().setSize(0);
   }
 
   return wasmFS.getFileTable().locked().addEntry(openFile);
@@ -627,7 +625,6 @@ doMkdir(path::ParsedParent parsed, int mode, backend_t backend = NullBackend) {
   }
 
   if (backend == parent->getBackend()) {
-    printf("Same backend\n");
     if (!lockedParent.insertDirectory(childName, mode)) {
       // TODO Receive a specific error code, and report it here. For now, report
       //      a generic error.
@@ -635,7 +632,6 @@ doMkdir(path::ParsedParent parsed, int mode, backend_t backend = NullBackend) {
     }
   } else {
     auto created = backend->createDirectory(mode);
-    printf("Different backend\n");
     if (!created) {
       // TODO Receive a specific error code, and report it here. For now, report
       //      a generic error.
@@ -803,7 +799,6 @@ __wasi_errno_t __wasi_fd_fdstat_get(__wasi_fd_t fd, __wasi_fdstat_t* stat) {
 
 // TODO: Test this with non-AT_FDCWD values.
 int __syscall_unlinkat(int dirfd, intptr_t path, int flags) {
-  printf("Made it to rmdir\n");
   if (flags & ~AT_REMOVEDIR) {
     // TODO: Test this case.
     return -EINVAL;
@@ -837,8 +832,6 @@ int __syscall_unlinkat(int dirfd, intptr_t path, int flags) {
     return -EBUSY;
   }
 
-  printf("Before checks\n");
-
   auto lockedFile = file->locked();
   if (auto dir = file->dynCast<Directory>()) {
     if (flags != AT_REMOVEDIR) {
@@ -846,7 +839,6 @@ int __syscall_unlinkat(int dirfd, intptr_t path, int flags) {
     }
     // A directory can only be removed if it has no entries.
     if (dir->locked().getNumEntries() > 0) {
-      printf("Not empty\n");
       return -ENOTEMPTY;
     }
   } else {
@@ -871,24 +863,6 @@ int __syscall_rmdir(intptr_t path) {
 
 // Assumes AT_REMOVEDIR is true
 int wasmfs_unmount(int dirfd, intptr_t path) {
-  printf("Made it to wasmfs_unmount\n");
-  // if (flags & ~AT_REMOVEDIR) {
-  //   // TODO: Test this case.
-  //   return -EINVAL;
-  // }
-  // It is invalid for rmdir paths to end in ".", but we need to distinguish
-  // this case from the case of `parseParent` returning (root, '.') when parsing
-  // "/", so we need to find the invalid "/." manually.
-  // if (flags == AT_REMOVEDIR) {
-  //   std::string_view p((char*)path);
-  //   // Ignore trailing '/'.
-  //   while (!p.empty() && p.back() == '/') {
-  //     p.remove_suffix(1);
-  //   }
-  //   if (p.size() >= 2 && p.substr(p.size() - 2) == std::string_view("/.")) {
-  //     return -EINVAL;
-  //   }
-  // }
   std::string_view p((char*)path);
   // Ignore trailing '/'.
   while (!p.empty() && p.back() == '/') {
@@ -917,27 +891,14 @@ int wasmfs_unmount(int dirfd, intptr_t path) {
     return -EBUSY;
   }
 
-  printf("Before checks\n");
-
   auto lockedFile = file->locked();
   if (auto dir = file->dynCast<Directory>()) {
-    // if (flags != AT_REMOVEDIR) {
-    //   return -EISDIR;
-    // }
-    // A directory can only be removed if it has no entries.
-    // if (dir->locked().getNumEntries() > 0) {
-    //   printf("Not empty\n");
-    //   return -ENOTEMPTY;
-    // }
     if (parent->getBackend() == dir->getBackend()) {
       // The child is not a valid mountpoint.
       return -EINVAL;
     }
   } else {
     // A normal file or symlink.
-    // if (flags == AT_REMOVEDIR) {
-    //   return -ENOTDIR;
-    // }
     return -ENOTDIR;
   }
 
@@ -951,9 +912,7 @@ int wasmfs_unmount(int dirfd, intptr_t path) {
     return err;
   }
 
-  int err = wasmfs_create_directory((char*)path, 0777, parent->getBackend());
-  printf("Unmount create dir err: %d\n", err);
-  return err;
+  return wasmfs_create_directory((char*)path, 0777, parent->getBackend());
 }
 
 int __syscall_getdents64(int fd, intptr_t dirp, size_t count) {

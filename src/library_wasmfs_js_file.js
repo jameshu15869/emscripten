@@ -1,5 +1,4 @@
 mergeInto(LibraryManager.library, {
-  $JS_FILE__deps: ['$stringToUTF8OnStack'],
   $JS_FILE: {
     createBackend: (opts) => (_wasmfs_create_js_file_backend())
   },

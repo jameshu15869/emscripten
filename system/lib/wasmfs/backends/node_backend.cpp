@@ -118,7 +118,6 @@ private:
   }
 
   int setSize(off_t size) override {
-    printf("Caught here\n");
     WASMFS_UNREACHABLE("TODO: implement NodeFile::setSize");
   }
 
@@ -253,7 +252,6 @@ public:
   }
 
   std::shared_ptr<Directory> createDirectory(mode_t mode) override {
-    printf("Made it to node backend\n");
     return std::make_shared<NodeDirectory>(mode, this, mountPath);
   }
 

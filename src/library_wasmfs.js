@@ -13,9 +13,7 @@ mergeInto(LibraryManager.library, {
       if (!opts.backend) {
         throw new Error("Underlying backend is not valid.");
       }
-
       var underlyingBackend = opts.backend.createBackend(opts);
-
       return _wasmfs_create_icase_backend_from_pointer(underlyingBackend);
     }
   },
@@ -371,16 +369,13 @@ FS.createPreloadedFile = FS_createPreloadedFile;
       __wasmfs_readdir_finish(state);
       return entries;
     }),
-    // TODO: mount
     mount: (type, opts, mountpoint) => {
-      if (type == undefined) {
+      if (!type) {
         throw new Error("FS is not valid.");
       }
-
       var backendPointer = type.createBackend(opts);
       return FS.handleError(withStackSave(() => __wasmfs_mount(stringToUTF8OnStack(mountpoint), backendPointer)));
     },
-    // TODO: unmount
     unmount: (mountpoint) => (
       FS.handleError(withStackSave(() => __wasmfs_unmount(stringToUTF8OnStack(mountpoint))))
     ),

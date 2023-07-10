@@ -5638,7 +5638,6 @@ Module = {
 
   def test_mount(self):
     self.set_setting('FORCE_FILESYSTEM')
-    self.emcc_args += ['--profiling', '--profiling-funcs']
     self.do_runf(test_file('fs/test_mount.c'), 'success')
 
   def test_getdents64(self):
@@ -5949,14 +5948,12 @@ Module = {
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
     self.emcc_args += ['-lnodefs.js']
-    self.emcc_args += ['--profiling', '--profiling-funcs']
     self.do_runf(test_file('fs/test_nodefs_cloexec.c'), 'success')
 
   @requires_node
   def test_fs_nodefs_home(self):
     self.set_setting('FORCE_FILESYSTEM')
     self.emcc_args += ['-lnodefs.js']
-    self.emcc_args += ['--profiling', '--profiling-funcs']
     self.do_runf(test_file('fs/test_nodefs_home.c'), 'success')
 
   @requires_node
@@ -5964,7 +5961,6 @@ Module = {
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
     self.emcc_args += ['-lnodefs.js']
-    self.emcc_args += ['--profiling', '--profiling-funcs']
     self.do_runf(test_file('fs/test_nodefs_nofollow.c'), 'success')
 
   @requires_node
@@ -5996,8 +5992,6 @@ Module = {
 
   def test_fs_js_api(self):
     self.set_setting("FORCE_FILESYSTEM")
-    # self.emcc_args += ['-lnodefs.js']
-    self.emcc_args += ['--profiling', '--profiling-funcs']
     self.do_runf(test_file('fs/test_fs_js_api.c'), 'success')
 
   def test_fs_write(self):

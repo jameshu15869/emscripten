@@ -5,7 +5,6 @@
  */
 
 mergeInto(LibraryManager.library, {
-  $OPFS__deps: ['$stringToUTF8OnStack'],
   $OPFS: {
     createBackend: (opts) => (_wasmfs_create_opfs_backend())
   },

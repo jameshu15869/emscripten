@@ -6,7 +6,7 @@
 
 mergeInto(LibraryManager.library, {
 #if WASMFS
-  $NODEFS__deps: ['$FS', '$stringToUTF8OnStack'],
+  $NODEFS__deps: ['$stringToUTF8OnStack'],
   $NODEFS: {
     createBackend: (opts) => (_wasmfs_create_node_backend(stringToUTF8OnStack(opts.root)))
   }
@@ -321,5 +321,4 @@ mergeInto(LibraryManager.library, {
     }
   }
 #endif
-
 });

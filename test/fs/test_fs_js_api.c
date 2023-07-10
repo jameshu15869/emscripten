@@ -409,12 +409,6 @@ int main() {
     test_fs_mkdirTree();
     test_fs_utime();
 
-    EM_ASM(
-        // FS.mkdir('/working');
-        // FS.mount(MEMFS, {}, '/working');
-        FS.mount(NODEFS, {}, '/working');
-    );
-
     cleanup();
 
     puts("success");
