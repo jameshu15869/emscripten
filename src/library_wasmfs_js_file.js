@@ -1,13 +1,7 @@
 mergeInto(LibraryManager.library, {
   $JS_FILE__deps: ['$stringToUTF8OnStack'],
   $JS_FILE: {
-    mount: (path, opts) => {
-      console.log("NODEFS mount");
-      var createdBackendPointer = _wasmfs_create_js_file_backend();
-      console.log("JS pointer: ", createdBackendPointer);
-      var err = __wasmfs_mount(stringToUTF8OnStack(path), createdBackendPointer);
-      return err;
-    }
+    createBackend: (opts) => (_wasmfs_create_js_file_backend())
   },
   // JSFile backend: Store a file's data in JS. We map File objects in C++ to
   // entries here that contain typed arrays.

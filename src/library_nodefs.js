@@ -6,12 +6,9 @@
 
 mergeInto(LibraryManager.library, {
 #if WASMFS
-  $NODEFS__deps: ['$stringToUTF8OnStack'],
+  $NODEFS__deps: ['$FS', '$stringToUTF8OnStack'],
   $NODEFS: {
-    mount: (path, opts) => {
-      var createdBackendPointer = _wasmfs_create_node_backend(stringToUTF8OnStack(opts.root));
-      return __wasmfs_mount(stringToUTF8OnStack(path), createdBackendPointer);
-    }
+    createBackend: (opts) => (_wasmfs_create_node_backend(stringToUTF8OnStack(opts.root)))
   }
 #else
   $NODEFS__deps: ['$FS', '$PATH', '$ERRNO_CODES', '$mmapAlloc'],

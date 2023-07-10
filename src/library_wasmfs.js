@@ -5,13 +5,18 @@
  */
 
 mergeInto(LibraryManager.library, {
-  $MEMFS__deps : [
-    '$stringToUTF8OnStack'
-  ],
   $MEMFS: {
-    mount: (path, opts) => {
-      var createdBackendPointer = _wasmfs_create_memory_backend(stringToUTF8OnStack(path));
-      return __wasmfs_mount(stringToUTF8OnStack(path), createdBackendPointer);
+    createBackend: (opts) => (_wasmfs_create_memory_backend())
+  },
+  $ICASE: {
+    createBackend: (opts) => {
+      if (!opts.backend) {
+        throw new Error("Underlying backend is not valid.");
+      }
+
+      var underlyingBackend = opts.backend.createBackend(opts);
+
+      return _wasmfs_create_icase_backend_from_pointer(underlyingBackend);
     }
   },
   $wasmFSPreloadedFiles: [],
@@ -28,6 +33,7 @@ FS.createPreloadedFile = FS_createPreloadedFile;
 `,
   $FS__deps: [
     '$MEMFS',
+    '$ICASE',
 #if LibraryManager.has('library_nodefs.js')
     '$NODEFS',
 #endif
@@ -367,28 +373,17 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     }),
     // TODO: mount
     mount: (type, opts, mountpoint) => {
-      // console.log("Type: ", type);
-      // console.log("Opts: ", opts);
-      // var err = withStackSave(() => __wasmfs_mount(stringToUTF8OnStack(mountpoint), opts.root ? stringToUTF8OnStack(opts.root) : stringToUTF8OnStack("."), type));
-      // console.log("JS ERR: ", err);
-      // return FS.handleError(err);
-      // if (typeof type == 'string') {
-      //   throw type;
-      // }
       if (type == undefined) {
         throw new Error("FS is not valid.");
       }
 
-      var err = type.mount(mountpoint, opts);
-      console.log("JS ERR: ", err);
-      return FS.handleError(err);
+      var backendPointer = type.createBackend(opts);
+      return FS.handleError(withStackSave(() => __wasmfs_mount(stringToUTF8OnStack(mountpoint), backendPointer)));
     },
     // TODO: unmount
-    unmount: (mountpoint) => {
-      var err = withStackSave(() => __wasmfs_unmount(stringToUTF8OnStack(mountpoint)));
-      console.log("Unmount err: ", err);
-      return FS.handleError(err);
-    },
+    unmount: (mountpoint) => (
+      FS.handleError(withStackSave(() => __wasmfs_unmount(stringToUTF8OnStack(mountpoint))))
+    ),
     // TODO: lookup
     mknod: (path, mode, dev) => {
       return FS.handleError(withStackSave(() => {

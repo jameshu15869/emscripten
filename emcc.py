@@ -2335,7 +2335,7 @@ def phase_linker_setup(options, state, newargs):
         'wasmfs_create_opfs_backend',
         'wasmfs_create_js_file_backend',
         'wasmfs_create_fetch_backend',
-        'wasmfs_create_icase_backend',
+        'wasmfs_create_icase_backend_from_pointer',
         '_wasmfs_mount',
         '_wasmfs_unmount',
         '_wasmfs_read_file',
