@@ -462,6 +462,7 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
       if (backend == parent->getBackend()) {
         created = lockedParent.insertDataFile(std::string(childName), mode);
         if (!created) {
+          printf("Bad same backend\n");
           // TODO Receive a specific error code, and report it here. For now,
           //      report a generic error.
           return -EIO;
@@ -469,6 +470,7 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
       } else {
         created = backend->createFile(mode);
         if (!created) {
+          printf("Bad different backend\n");
           // TODO Receive a specific error code, and report it here. For now,
           //      report a generic error.
           return -EIO;
@@ -857,6 +859,60 @@ int __syscall_unlinkat(int dirfd, intptr_t path, int flags) {
 
 int __syscall_rmdir(intptr_t path) {
   return __syscall_unlinkat(AT_FDCWD, path, AT_REMOVEDIR);
+}
+
+// Assumes AT_REMOVEDIR is true
+int wasmfs_unmount(int dirfd, intptr_t path) {
+  std::string_view p((char*)path);
+  // Ignore trailing '/'.
+  while (!p.empty() && p.back() == '/') {
+    p.remove_suffix(1);
+  }
+  if (p.size() >= 2 && p.substr(p.size() - 2) == std::string_view("/.")) {
+    return -EINVAL;
+  }
+
+  auto parsed = path::parseParent((char*)path, dirfd);
+  if (auto err = parsed.getError()) {
+    printf("Parse error\n");
+    return err;
+  }
+  printf("Parsed parent\n");
+  auto& [parent, childNameView] = parsed.getParentChild();
+  std::string childName(childNameView);
+  auto lockedParent = parent->locked();
+  auto file = lockedParent.getChild(childName);
+  printf("Parsed child\n");
+  if (!file) {
+    return -ENOENT;
+  }
+  // Disallow removing the root directory, even if it is empty.
+  if (file == wasmFS.getRootDirectory()) {
+    return -EBUSY;
+  }
+
+  auto lockedFile = file->locked();
+  if (auto dir = file->dynCast<Directory>()) {
+    if (parent->getBackend() == dir->getBackend()) {
+      // The child is not a valid mountpoint.
+      return -EINVAL;
+    }
+  } else {
+    // A normal file or symlink.
+    return -ENOTDIR;
+  }
+
+  // Cannot unlink/rmdir if the parent dir doesn't have write permissions.
+  if (!(lockedParent.getMode() & WASMFS_PERM_WRITE)) {
+    return -EACCES;
+  }
+
+  // Input is valid, perform the unlink.
+  if (auto err = lockedParent.removeChild(childName)) {
+    return err;
+  }
+
+  return wasmfs_create_directory((char*)path, 0777, parent->getBackend());
 }
 
 int __syscall_getdents64(int fd, intptr_t dirp, size_t count) {

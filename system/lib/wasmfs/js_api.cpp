@@ -23,6 +23,8 @@ using namespace wasmfs;
 extern "C" {
 
 __wasi_fd_t wasmfs_create_file(char* pathname, mode_t mode, backend_t backend);
+int wasmfs_create_directory(char* path, int mode, backend_t backend);
+int wasmfs_unmount(int dirfd, intptr_t path);
 
 // Copy the file specified by the pathname into JS.
 // Return a pointer to the JS buffer in HEAPU8.
@@ -34,7 +36,7 @@ void* _wasmfs_read_file(char* path) {
   int err = 0;
   err = stat(path, &file);
   if (err < 0) {
-    emscripten_console_error("Fatal error in FS.readFile");
+    emscripten_console_error("Fatal error in FS.readFile stat");
     abort();
   }
 
@@ -262,6 +264,46 @@ int _wasmfs_stat(char* path, struct stat* statBuf) {
 
 int _wasmfs_lstat(char* path, struct stat* statBuf) {
   return __syscall_lstat64((intptr_t)path, (intptr_t)statBuf);
+}
+
+int _wasmfs_mount(char* path, backend_t created_backend) {
+
+  printf("Addr: %p\n", created_backend);
+  // int err = doMount(path::parseParent(path), 0777, created_backend);
+  int err = __syscall_rmdir((intptr_t)path);
+  printf("Rmdir err: %d\n", err);
+
+  if (err == -ENOTEMPTY) {
+    // Check for an attempt to mount to an existing mountpoint.
+    auto parsedParent = path::parseParent(path);
+    if (auto err = parsedParent.getError()) {
+      return err;
+    }
+    auto& [parent, childNameView] = parsedParent.getParentChild();
+    std::string childName(childNameView);
+    auto lockedParent = parent->locked();
+    auto child = lockedParent.getChild(childName);
+    if (parent->getBackend() != child->getBackend()) {
+      return -EBUSY;
+    }
+
+    return -ENOTEMPTY;
+  }
+
+  // The legacy JS API mount requires the directory to already exist.
+  if (err && err != -ENOENT) {
+    return err;
+  }
+
+  err = wasmfs_create_directory(path, 0777, created_backend);
+
+  printf("Create Dir Err: %d\n", err);
+
+  return err;
+}
+
+int _wasmfs_unmount(char* path) {
+  return wasmfs_unmount(AT_FDCWD, (intptr_t)path);
 }
 
 // Helper method that identifies what a path is:
