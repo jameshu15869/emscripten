@@ -28,13 +28,13 @@ int main() {
     assert(contents === 'az');
 
 #if !defined(WASMFS)
-    // The legacy API requires a mount directory to exist, while WasmFS will create the directory.
+    // the legacy API requires a mount directory to exist, while WasmFS will create the directory.
     try {
       FS.mount(MEMFS, {}, '/missing');
     } catch (e) {
       ex = e;
     }
-    assert(ex instanceof FS.ErrnoError && ex.errno === 44); // ENOENT
+    assert(ex.name === 'ErrnoError' && ex.errno === 44); // ENOENT
 #endif
 
 #if WASMFS
@@ -46,7 +46,7 @@ int main() {
     } catch (e) {
       ex = e;
     }
-    assert(ex instanceof FS.ErrnoError && ex.errno === 55); // ENOTEMPTY
+    assert(ex.name === 'ErrnoError' && ex.errno === 55); // ENOTEMPTY
 #endif
 
     // mount to an existing mountpoint
@@ -55,16 +55,16 @@ int main() {
     } catch (e) {
       ex = e;
     }
-    assert(ex instanceof FS.ErrnoError && ex.errno === 10); // EBUSY
+    assert(ex.name === 'ErrnoError' && ex.errno === 10); // EBUSY
 
-    // attempt to unmount a nonmountopint directory inside a mountpoint
+    // attempt to unmount a non-mountpoint directory inside a mountpoint
     FS.mkdir('/working/unmountable');
     try {
       FS.unmount('/working/unmountable');
     } catch (e) {
       ex = e;
     }
-    assert(ex instanceof FS.ErrnoError && ex.errno === 28); // EINVAL
+    assert(ex.name === 'ErrnoError' && ex.errno === 28); // EINVAL
 
     // unmount
     FS.unmount('/working');
@@ -75,12 +75,13 @@ int main() {
     } catch (e) {
       ex = e;
     }
-    assert(ex instanceof FS.ErrnoError && ex.errno === 28); // EINVAL
+    assert(ex.name === 'ErrnoError' && ex.errno === 28); // EINVAL
 
     // mount and unmount again
     FS.mount(MEMFS, {}, '/working');
     FS.unmount('/working');
 
+    ex = null;
     // try to read the file from the old mount
     try {
       FS.readFile('/working/waka.txt', { encoding: 'utf8' });
@@ -89,7 +90,7 @@ int main() {
     }
 #if !defined(WASMFS)
       // WasmFS readFile aborts on failure, instead throwing an ErrnoError.
-      assert(ex instanceof FS.ErrnoError && ex.errno === 44); // ENOENT
+      assert(ex.name === 'ErrnoError' && ex.errno === 44); // ENOENT
 #else
       assert(ex);
 #endif
@@ -108,9 +109,8 @@ int main() {
     // test ICASE backend
     FS.mount(ICASE, { backend: MEMFS }, "/icase");
     FS.writeFile("/icase/IGNORE.txt", "a=1");
-    assert(FS.readFile("/icase/Ignore.txt", { encoding: 'utf8'}) === 'a=1');
-    assert(FS.readFile("/icase/ignore.TXT", { encoding: 'utf8'}) === 'a=1');
-
+    assert(FS.readFile("/icase/Ignore.txt", { encoding: 'utf8' }) === 'a=1');
+    assert(FS.readFile("/icase/ignore.TXT", { encoding: 'utf8' }) === 'a=1');
 #endif
   );
 

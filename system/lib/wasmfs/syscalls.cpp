@@ -462,7 +462,6 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
       if (backend == parent->getBackend()) {
         created = lockedParent.insertDataFile(std::string(childName), mode);
         if (!created) {
-          printf("Bad same backend\n");
           // TODO Receive a specific error code, and report it here. For now,
           //      report a generic error.
           return -EIO;
@@ -470,7 +469,6 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
       } else {
         created = backend->createFile(mode);
         if (!created) {
-          printf("Bad different backend\n");
           // TODO Receive a specific error code, and report it here. For now,
           //      report a generic error.
           return -EIO;
@@ -861,7 +859,7 @@ int __syscall_rmdir(intptr_t path) {
   return __syscall_unlinkat(AT_FDCWD, path, AT_REMOVEDIR);
 }
 
-// Assumes AT_REMOVEDIR is true
+// wasmfs_unmount is similar to __syscall_unlinkat, but assumes AT_REMOVEDIR is true.
 int wasmfs_unmount(int dirfd, intptr_t path) {
   std::string_view p((char*)path);
   // Ignore trailing '/'.
@@ -874,15 +872,12 @@ int wasmfs_unmount(int dirfd, intptr_t path) {
 
   auto parsed = path::parseParent((char*)path, dirfd);
   if (auto err = parsed.getError()) {
-    printf("Parse error\n");
     return err;
   }
-  printf("Parsed parent\n");
   auto& [parent, childNameView] = parsed.getParentChild();
   std::string childName(childNameView);
   auto lockedParent = parent->locked();
   auto file = lockedParent.getChild(childName);
-  printf("Parsed child\n");
   if (!file) {
     return -ENOENT;
   }
@@ -912,6 +907,7 @@ int wasmfs_unmount(int dirfd, intptr_t path) {
     return err;
   }
 
+  // Create a new directory to replace the old mount.
   return wasmfs_create_directory((char*)path, 0777, parent->getBackend());
 }
 
