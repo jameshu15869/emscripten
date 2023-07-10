@@ -5,6 +5,16 @@
  */
 
 mergeInto(LibraryManager.library, {
+  $OPFS__deps: ['$stringToUTF8OnStack'],
+  $OPFS: {
+    mount: (path, opts) => {
+      console.log("OPFS mount");
+      var createdBackendPointer = _wasmfs_create_opfs_backend();
+      console.log("JS pointer: ", createdBackendPointer);
+      var err = __wasmfs_mount(stringToUTF8OnStack(path), createdBackendPointer);
+      return err;
+    }
+  },
   $wasmfsOPFSDirectoryHandles__deps: ['$HandleAllocator'],
   $wasmfsOPFSDirectoryHandles: "new HandleAllocator()",
   $wasmfsOPFSFileHandles__deps: ['$HandleAllocator'],

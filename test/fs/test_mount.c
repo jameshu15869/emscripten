@@ -99,7 +99,9 @@ int main() {
     assert(contents === 'abc');
 
 #if WASMFS
-    FS.mount(OPFS, {}, "/opfs");
+    FS.mount(JS_FILE, {}, "/jsfile");
+    FS.writeFile("/jsfile/jsfile.txt", "a=1");
+    assert(FS.readFile("/jsfile/jsfile.txt", { encoding: 'utf8' }) === 'a=1');
 #endif
   );
 

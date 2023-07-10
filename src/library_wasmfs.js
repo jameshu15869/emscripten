@@ -32,6 +32,8 @@ FS.createPreloadedFile = FS_createPreloadedFile;
     '$NODEFS',
 #endif
     '$OPFS',
+    '$JS_FILE',
+    '$FETCH',
     '$wasmFSPreloadedFiles',
     '$wasmFSPreloadedDirs',
     '$wasmFSPreloadingFlushed',

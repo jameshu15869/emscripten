@@ -9,11 +9,8 @@ mergeInto(LibraryManager.library, {
   $NODEFS__deps: ['$stringToUTF8OnStack'],
   $NODEFS: {
     mount: (path, opts) => {
-      console.log("NODEFS mount");
       var createdBackendPointer = _wasmfs_create_node_backend(stringToUTF8OnStack(opts.root));
-      console.log("JS pointer: ", createdBackendPointer);
-      var err = __wasmfs_mount(stringToUTF8OnStack(path), createdBackendPointer);
-      return err;
+      return __wasmfs_mount(stringToUTF8OnStack(path), createdBackendPointer);
     }
   }
 #else
